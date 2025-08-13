@@ -2,101 +2,13 @@
 #include "/home/codeleaded/System/Static/Library/WindowEngine1.0.h"
 #include "/home/codeleaded/System/Static/Library/Random.h"
 #include "/home/codeleaded/System/Static/Library/TransformedView.h"
+#include "/home/codeleaded/System/Static/Library/AStar.h"
 
 typedef struct WorldPoint2D {
 	float x;
 	float y;
 	int t;
 } WorldPoint2D;
-
-typedef struct AStarNode {
-	void* data;
-	unsigned int size;
-	unsigned int visited;
-	float local;
-	float global;
-	Vector neighbours;
-	struct AStarNode* parent;
-} AStarNode;
-
-AStarNode AStarNode_New(void* data,unsigned int size){
-	AStarNode an;
-	an.data = malloc(size);
-	memcpy(an.data,data,size);
-
-	an.size = size;
-	an.visited = 0U;
-	an.local = 0.0f;
-	an.global = 0.0f;
-	an.neighbours = Vector_New(sizeof(AStarNode*));
-	an.parent = NULL;
-	return an;
-}
-float AStarNode_DistanceND(AStarNode* start,AStarNode* end,int n){
-	float* awp = (float*)start->data;
-	float* nwp = (float*)end->data;
-
-	float out = 0.0f;
-	for(int i = 0;i<n;i++){
-		const float dn = nwp[i] - awp[i];
-		out += dn * dn;
-	}
-	return F32_Sqrt(out);
-}
-float AStarNode_HeuristicND(AStarNode* start,AStarNode* end,int n){
-	return AStarNode_DistanceND(start,end,n);
-}
-int AStarNode_Cmp(const void* pan1,const void* pan2){
-	AStarNode* an1 = *(AStarNode**)pan1;
-	AStarNode* an2 = *(AStarNode**)pan2;
-	return an1->global > an2->global ? 1 : (an1->global != an2->global ? -1 : 0);
-}
-void AStarNode_UpdateND(AStarNode* start,AStarNode* end,int n){
-	AStarNode* current = start;
-	start->local = 0.0f;
-	start->global = AStarNode_HeuristicND(start,end,n);
-
-	Vector testnodes = Vector_New(sizeof(AStarNode*));
-	Vector_Push(&testnodes,(AStarNode*[]){ start });
-
-	while (testnodes.size > 0 && current != end){
-		qsort(testnodes.Memory,testnodes.size,testnodes.ELEMENT_SIZE,AStarNode_Cmp);
-
-		AStarNode* first = *(AStarNode**)Vector_Get(&testnodes,0);
-		while (testnodes.size > 0 && first->visited){
-			Vector_Remove(&testnodes,0);
-
-			if(testnodes.size > 0)
-				first = *(AStarNode**)Vector_Get(&testnodes,0);
-		}
-
-		if(testnodes.size <= 0) break;
-
-		current = first;
-		current->visited = 1;
-
-		for(int k = 0;k<current->neighbours.size;k++){
-			AStarNode* nan = *(AStarNode**)Vector_Get(&current->neighbours,k);
-			if(!nan->visited) Vector_Push(&testnodes,(AStarNode*[]){ nan });
-
-			float newlocal = current->local + AStarNode_DistanceND(current,nan,n);
-			if(newlocal < nan->local){
-				nan->parent = current;
-				nan->local = newlocal;
-				nan->global = nan->local + AStarNode_HeuristicND(nan,end,n);
-			}
-		}
-	}
-	
-	Vector_Free(&testnodes);
-}
-void AStarNode_Free(AStarNode* an){
-	if(an->data) free(an->data);
-	an->data = NULL;
-	Vector_Free(&an->neighbours);
-	an->parent = NULL;
-}
-
 
 #define MAP_WIDTH	16
 #define MAP_HEIGHT	16
